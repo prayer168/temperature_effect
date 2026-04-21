@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>溫度與物質變化 🌡️ 互動視覺學習儀表板</title>
+<style>
+  :root {
+    --cold: #48cae4;
+    --cold-dark: #0077b6;
+    --cold-pale: #caf0f8;
+    --warm: #f77f00;
+    --warm-light: #ffd60a;
+    --hot: #e63946;
+    --hot-dark: #9d0208;
+    --mid: #74c69d;
+    --bg1: #e0f7fa;
+    --bg2: #fff8e1;
+    --white: #ffffff;
+    --text: #1b4332;
+    --shadow: rgba(0,0,0,0.15);
+    --card-bg: rgba(255,255,255,0.92);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', '微軟正黑體', sans-serif;
+    background: linear-gradient(180deg, #caf0f8 0%, #e0f7fa 30%, #fff8e1 70%, #ffe8d6 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    background: linear-gradient(135deg, #0077b6 0%, #48cae4 35%, #ffd60a 70%, #e63946 100%);
+    padding: 50px 20px 90px;
+    text-align: center;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0; height: 60px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 60'%3E%3Cpath fill='%23e0f7fa' d='M0,30 C360,60 720,0 1080,30 C1260,45 1380,20 1440,30 L1440,60 L0,60 Z'/%3E%3C/svg%3E") no-repeat bottom;
+    background-size: cover;
+  }
+  .hero-thermometer {
+    position: absolute; top: 15px; left: 60px;
+    font-size: 70px; animation: thermoPulse 2s ease-in-out infinite;
+  }
+  @keyframes thermoPulse {
+    0%,100% { transform: scale(1) rotate(-5deg); }
+    50% { transform: scale(1.1) rotate(5deg); }
+  }
+  .hero-snowflake {
+    position: absolute; top: 20px; right: 70px;
+    font-size: 60px; animation: spin 8s linear infinite; opacity: 0.9;
+  }
+  @keyframes spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
+  .hero h1 {
+    font-size: clamp(1.8rem, 6vw, 3.2rem);
+    color: #fff;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.25);
+    margin-bottom: 10px;
+    position: relative; z-index: 1;
+  }
+  .hero p {
+    font-size: clamp(1rem, 2.5vw, 1.2rem);
+    color: #fff;
+    opacity: 0.92;
+    position: relative; z-index: 1;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+  }
+  .hero-badges {
+    display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+    margin-top: 20px; position: relative; z-index: 1;
+  }
+  .badge {
+    background: rgba(255,255,255,0.25);
+    border: 2px solid rgba(255,255,255,0.6);
+    color: #fff;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    backdrop-filter: blur(4px);
+  }
+
+  /* ── NAV TABS ── */
+  .tab-nav {
+    display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+    padding: 20px 20px 0;
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(224,247,250,0.95);
+    backdrop-filter: blur(8px);
+    border-bottom: 2px solid #48cae4;
+  }
+  .tab-btn {
+    padding: 10px 22px;
+    border: 2px solid #48cae4;
+    border-radius: 25px 25px 0 0;
+    background: rgba(255,255,255,0.7);
+    color: var(--cold-dark);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    font-family: inherit;
+    border-bottom: none;
+  }
+  .tab-btn:hover { background: #caf0f8; }
+  .tab-btn.active {
+    background: #fff;
+    color: #e63946;
+    border-color: #e63946;
+    transform: translateY(2px);
+  }
+
+  /* ── SECTIONS ── */
+  .section { display: none; padding: 30px 20px 50px; max-width: 1100px; margin: 0 auto; }
+  .section.active { display: block; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 28px;
+    box-shadow: 0 6px 24px var(--shadow);
+  }
+  .card-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card-title .icon { font-size: 1.8rem; }
+
+  /* ── GRID ── */
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+
+  /* ── PHENOMENON CARDS ── */
+  .phenom-card {
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.25s, box-shadow 0.25s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .phenom-card:hover { transform: translateY(-6px); box-shadow: 0 12px 32px var(--shadow); }
+  .phenom-card.physical { background: linear-gradient(135deg, #caf0f8, #90e0ef); border: 2px solid #48cae4; }
+  .phenom-card.chemical { background: linear-gradient(135deg, #ffe8d6, #ffb347); border: 2px solid #f77f00; }
+  .phenom-card .emoji { font-size: 3.5rem; margin-bottom: 10px; display: block; }
+  .phenom-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; color: #1b4332; }
+  .phenom-card p { font-size: 0.85rem; color: #2d6a4f; line-height: 1.5; }
+  .phenom-tag {
+    position: absolute; top: 10px; right: 10px;
+    font-size: 0.72rem; font-weight: 700;
+    padding: 3px 10px; border-radius: 20px;
+  }
+  .phenom-card.physical .phenom-tag { background: #0077b6; color: #fff; }
+  .phenom-card.chemical .phenom-tag { background: #e63946; color: #fff; }
+
+  /* ── COMPARE TABLE ── */
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+  .compare-table th {
+    padding: 12px 16px;
+    text-align: center;
+    font-weight: 700;
+  }
+  .compare-table th:nth-child(1) { background: #e0f7fa; color: #0077b6; border-radius: 8px 0 0 0; }
+  .compare-table th:nth-child(2) { background: #caf0f8; color: #0077b6; }
+  .compare-table th:nth-child(3) { background: #ffe8d6; color: #e63946; border-radius: 0 8px 0 0; }
+  .compare-table td {
+    padding: 10px 14px;
+    text-align: center;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table tr:hover td { background: #f0f9ff; }
+
+  /* ── WATER STATE SLIDER ── */
+  .water-demo {
+    background: linear-gradient(135deg, #e0f7fa, #fff8e1);
+    border-radius: 20px; padding: 28px;
+    margin-bottom: 28px;
+    box-shadow: 0 6px 24px var(--shadow);
+  }
+  .slider-wrap { margin: 20px 0; }
+  .temp-slider {
+    -webkit-appearance: none;
+    width: 100%; height: 14px;
+    border-radius: 7px;
+    background: linear-gradient(to right, #0077b6, #48cae4, #ffd60a, #f77f00, #e63946);
+    outline: none; cursor: pointer;
+  }
+  .temp-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: #fff;
+    border: 4px solid #e63946;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    cursor: grab;
+  }
+  .temp-display {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 12px 0;
+    transition: color 0.3s;
+  }
+  .water-visual {
+    display: flex; justify-content: center; align-items: flex-end;
+    height: 200px; gap: 30px; margin: 20px 0;
+  }
+  .state-container {
+    width: 120px; height: 160px;
+    border: 3px solid #90e0ef;
+    border-radius: 12px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-end;
+    overflow: hidden; position: relative;
+    background: rgba(255,255,255,0.5);
+    transition: all 0.4s;
+  }
+  .state-label {
+    position: absolute; top: 8px;
+    font-size: 0.8rem; font-weight: 700;
+    color: #0077b6; z-index: 1;
+  }
+  .water-fill {
+    width: 100%; transition: height 0.5s, background 0.5s;
+    border-radius: 0 0 8px 8px;
+    position: relative; overflow: hidden;
+  }
+  .wave-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 100%; pointer-events: none;
+  }
+  /* molecules */
+  .molecules {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 4px; padding: 10px;
+    width: 100%; height: 100%;
+    position: absolute; top: 0; left: 0;
+  }
+  .mol {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff, #48cae4);
+    border: 1.5px solid #0077b6;
+    transition: all 0.4s;
+  }
+  .state-info {
+    text-align: center; margin-top: 12px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.8);
+    font-size: 1rem; line-height: 1.7;
+    transition: all 0.4s;
+  }
+  .state-name {
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  /* ── THERMOMETER ── */
+  .thermo-wrap {
+    display: flex; align-items: center; gap: 30px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .thermo-svg-wrap { flex-shrink: 0; }
+  .thermo-facts { flex: 1; min-width: 240px; }
+  .fact-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    border-left: 4px solid transparent;
+    transition: all 0.3s;
+  }
+  .fact-item.ice { background: #e0f7fa; border-color: #0077b6; }
+  .fact-item.water { background: #e8f4fd; border-color: #48cae4; }
+  .fact-item.steam { background: #fff3e0; border-color: #f77f00; }
+  .fact-item.boil { background: #fce4ec; border-color: #e63946; }
+  .fact-icon { font-size: 1.4rem; }
+
+  /* ── MATERIAL EFFECTS ── */
+  .material-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .mat-card {
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.25s, box-shadow 0.25s;
+    position: relative; overflow: hidden;
+  }
+  .mat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 28px var(--shadow); }
+  .mat-card .mat-emoji { font-size: 3rem; display: block; margin-bottom: 10px; }
+  .mat-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+  .mat-card .mp { font-size: 0.82rem; color: #555; margin-bottom: 6px; }
+  .mat-card .bar-wrap { height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; }
+  .mat-card .bar-fill { height: 100%; border-radius: 4px; transition: width 1s; }
+
+  .mat-card.ice-card { background: linear-gradient(135deg, #e0f7fa, #b3e5fc); border: 2px solid #29b6f6; }
+  .mat-card.metal-card { background: linear-gradient(135deg, #f5f5f5, #e0e0e0); border: 2px solid #9e9e9e; }
+  .mat-card.wax-card { background: linear-gradient(135deg, #fff9c4, #fff176); border: 2px solid #f9a825; }
+  .mat-card.iron-card { background: linear-gradient(135deg, #efebe9, #d7ccc8); border: 2px solid #795548; }
+  .mat-card.rubber-card { background: linear-gradient(135deg, #f3e5f5, #ce93d8); border: 2px solid #9c27b0; }
+  .mat-card.glass-card { background: linear-gradient(135deg, #e8eaf6, #c5cae9); border: 2px solid #5c6bc0; }
+
+  /* modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 999;
+    align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box {
+    background: #fff; border-radius: 20px;
+    padding: 32px; max-width: 480px; width: 100%;
+    position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: modalIn 0.3s ease;
+  }
+  @keyframes modalIn { from { opacity:0; transform:scale(0.8); } to { opacity:1; transform:scale(1); } }
+  .modal-close {
+    position: absolute; top: 14px; right: 18px;
+    font-size: 1.5rem; cursor: pointer; color: #999;
+    background: none; border: none; font-family: inherit;
+    line-height: 1;
+  }
+  .modal-close:hover { color: #e63946; }
+  .modal-emoji { font-size: 4rem; text-align: center; margin-bottom: 14px; }
+  .modal-title { font-size: 1.4rem; font-weight: 800; text-align: center; margin-bottom: 12px; color: #1b4332; }
+  .modal-body { font-size: 0.95rem; line-height: 1.8; color: #444; }
+  .modal-body ul { padding-left: 20px; margin-top: 8px; }
+  .modal-body li { margin-bottom: 4px; }
+
+  /* ── EXPANSION DEMO ── */
+  .expand-demo {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 20px; padding: 10px;
+  }
+  .expand-controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .expand-btn {
+    padding: 12px 28px; border-radius: 25px; border: none;
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+    font-family: inherit; transition: all 0.2s;
+  }
+  .expand-btn.heat { background: linear-gradient(135deg, #f77f00, #e63946); color: #fff; }
+  .expand-btn.cool { background: linear-gradient(135deg, #48cae4, #0077b6); color: #fff; }
+  .expand-btn:hover { transform: scale(1.05); box-shadow: 0 4px 14px var(--shadow); }
+  .metal-rod-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .metal-rod {
+    height: 48px;
+    background: linear-gradient(to bottom, #e0e0e0, #9e9e9e, #e0e0e0);
+    border-radius: 6px;
+    transition: width 0.8s cubic-bezier(.34,1.56,.64,1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: #333; font-size: 0.85rem;
+    position: relative;
+  }
+  .metal-rod .rod-label {
+    position: absolute; bottom: -22px;
+    font-size: 0.78rem; color: #555;
+    white-space: nowrap;
+  }
+  .expand-temp-display {
+    font-size: 1.5rem; font-weight: 800;
+    padding: 8px 24px; border-radius: 25px;
+    transition: all 0.4s;
+  }
+
+  /* ── QUIZ ── */
+  .quiz-section { }
+  .quiz-card {
+    background: var(--card-bg);
+    border-radius: 20px; padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 6px 24px var(--shadow);
+  }
+  .quiz-q { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; color: #1b4332; }
+  .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .quiz-opt {
+    padding: 12px 16px;
+    border: 2px solid #ccc;
+    border-radius: 12px; background: #fff;
+    cursor: pointer; font-size: 0.9rem;
+    transition: all 0.2s; text-align: center;
+    font-family: inherit;
+  }
+  .quiz-opt:hover { border-color: #48cae4; background: #e0f7fa; }
+  .quiz-opt.correct { border-color: #2d6a4f; background: #d8f3dc; color: #1b4332; }
+  .quiz-opt.wrong { border-color: #e63946; background: #fce4ec; color: #e63946; }
+  .quiz-feedback { margin-top: 12px; font-size: 0.95rem; font-weight: 600; padding: 10px 14px; border-radius: 10px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct { background: #d8f3dc; color: #2d6a4f; }
+  .quiz-feedback.wrong { background: #fce4ec; color: #c62828; }
+  .quiz-score {
+    text-align: center; font-size: 1.3rem; font-weight: 800;
+    margin-top: 16px; padding: 16px;
+    background: linear-gradient(135deg, #caf0f8, #b7e4c7);
+    border-radius: 16px;
+  }
+  .quiz-reset {
+    display: block; margin: 12px auto 0;
+    padding: 10px 28px; border-radius: 20px; border: none;
+    background: linear-gradient(135deg, #48cae4, #0077b6);
+    color: #fff; font-size: 0.95rem; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+    transition: transform 0.2s;
+  }
+  .quiz-reset:hover { transform: scale(1.05); }
+
+  /* ── HEAT TRANSFER ANIM ── */
+  .heat-anim-wrap {
+    display: flex; justify-content: center; align-items: center;
+    gap: 20px; flex-wrap: wrap; padding: 16px 0;
+  }
+  .heat-source {
+    text-align: center;
+  }
+  .flame-emoji { font-size: 2.8rem; animation: flicker 0.8s ease-in-out infinite alternate; }
+  @keyframes flicker {
+    from { transform: scale(1) rotate(-2deg); }
+    to { transform: scale(1.1) rotate(2deg); }
+  }
+  .heat-arrows {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .arrow-particle {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #f77f00;
+    animation: moveRight 1.2s ease-in-out infinite;
+    opacity: 0;
+  }
+  .arrow-particle:nth-child(1) { animation-delay: 0s; }
+  .arrow-particle:nth-child(2) { animation-delay: 0.3s; }
+  .arrow-particle:nth-child(3) { animation-delay: 0.6s; }
+  .arrow-particle:nth-child(4) { animation-delay: 0.9s; }
+  @keyframes moveRight {
+    0% { opacity:0; transform:translateX(-8px); }
+    50% { opacity:1; }
+    100% { opacity:0; transform:translateX(8px); }
+  }
+  .heated-obj {
+    width: 80px; height: 80px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #9e9e9e, #616161);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+    animation: heatGlow 2s ease-in-out infinite;
+    box-shadow: 0 0 0 4px transparent;
+    transition: background 0.5s;
+  }
+  @keyframes heatGlow {
+    0%,100% { box-shadow: 0 0 10px rgba(247,127,0,0.3); }
+    50% { box-shadow: 0 0 25px rgba(230,57,70,0.6); }
+  }
+
+  /* ── REAL LIFE EXAMPLES ── */
+  .example-strip {
+    display: flex; gap: 12px;
+    overflow-x: auto; padding-bottom: 8px;
+    scroll-snap-type: x mandatory;
+  }
+  .example-strip::-webkit-scrollbar { height: 6px; }
+  .example-strip::-webkit-scrollbar-thumb { background: #48cae4; border-radius: 3px; }
+  .ex-card {
+    flex-shrink: 0; width: 160px;
+    background: var(--card-bg);
+    border-radius: 14px; padding: 16px;
+    text-align: center;
+    scroll-snap-align: start;
+    border: 2px solid #90e0ef;
+    transition: transform 0.2s;
+  }
+  .ex-card:hover { transform: scale(1.04); }
+  .ex-card .ex-emoji { font-size: 2.6rem; margin-bottom: 8px; display: block; }
+  .ex-card h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+  .ex-card p { font-size: 0.75rem; color: #555; line-height: 1.4; }
+
+  /* ── SUMMARY BOX ── */
+  .summary-box {
+    background: linear-gradient(135deg, #0077b6, #e63946);
+    border-radius: 20px; padding: 28px;
+    color: #fff; margin-bottom: 28px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  }
+  .summary-box h2 { font-size: 1.4rem; margin-bottom: 16px; }
+  .summary-points {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .summary-point {
+    background: rgba(255,255,255,0.2);
+    border-radius: 12px; padding: 14px;
+    font-size: 0.9rem; line-height: 1.6;
+    backdrop-filter: blur(4px);
+  }
+  .summary-point strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 24px;
+    color: #555;
+    font-size: 0.85rem;
+    border-top: 1px solid #ccc;
+    margin-top: 20px;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .quiz-options { grid-template-columns: 1fr; }
+    .water-visual { gap: 12px; }
+    .state-container { width: 90px; height: 130px; }
+    .hero-thermometer { font-size: 50px; left: 10px; }
+    .hero-snowflake { font-size: 42px; right: 10px; }
+  }
+
+  /* ── SCROLL ANIM ── */
+  .fade-in { opacity: 0; transform: translateY(20px); transition: opacity 0.5s, transform 0.5s; }
+  .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── PROCESS FLOW ── */
+  .process-flow {
+    display: flex; align-items: center; justify-content: center;
+    flex-wrap: wrap; gap: 8px; padding: 16px 0;
+  }
+  .flow-step {
+    background: #fff;
+    border: 2px solid #48cae4;
+    border-radius: 12px;
+    padding: 12px 18px;
+    text-align: center;
+    min-width: 100px;
+    transition: transform 0.2s;
+  }
+  .flow-step:hover { transform: scale(1.05); }
+  .flow-step .step-emoji { font-size: 2rem; display: block; }
+  .flow-step .step-label { font-size: 0.85rem; font-weight: 700; margin-top: 4px; }
+  .flow-step .step-temp { font-size: 0.75rem; color: #e63946; font-weight: 600; }
+  .flow-arrow {
+    font-size: 1.5rem; color: #48cae4;
+    display: flex; flex-direction: column; align-items: center;
+    font-size: 0.75rem; font-weight: 600; color: #0077b6; gap: 2px;
+  }
+  .flow-arrow span { font-size: 1.4rem; }
+
+  /* quiz progress */
+  .quiz-progress {
+    height: 8px; background: #e0e0e0; border-radius: 4px;
+    overflow: hidden; margin-bottom: 20px;
+  }
+  .quiz-progress-bar {
+    height: 100%; background: linear-gradient(to right, #48cae4, #0077b6);
+    border-radius: 4px; transition: width 0.4s;
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-thermometer">🌡️</div>
+  <div class="hero-snowflake">❄️</div>
+  <h1>🔥 溫度與物質變化 ❄️</h1>
+  <p>探索溫度如何改變物質的狀態與性質！</p>
+  <div class="hero-badges">
+    <span class="badge">🧊 冰→水→水蒸氣</span>
+    <span class="badge">⚗️ 物理變化 vs 化學變化</span>
+    <span class="badge">🔩 熱脹冷縮</span>
+    <span class="badge">🧪 互動實驗</span>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('phenomena')">🔬 物質變化現象</button>
+  <button class="tab-btn" onclick="switchTab('water')">💧 溫度對水的影響</button>
+  <button class="tab-btn" onclick="switchTab('materials')">🔩 溫度對物質影響</button>
+  <button class="tab-btn" onclick="switchTab('quiz')">📝 小測驗</button>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     TAB 1：物質變化現象
+══════════════════════════════════════════ -->
+<section id="tab-phenomena" class="section active">
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">🔬</span>什麼是物質變化？</div>
+    <p style="line-height:1.8; font-size:0.95rem; color:#333;">
+      當溫度改變時，物質可能發生兩種類型的變化：<strong>物理變化</strong>（外形或狀態改變，但本質不變）
+      與<strong>化學變化</strong>（產生新物質，變化不可逆）。溫度是驅動物質變化的重要因素！
+    </p>
+  </div>
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">🧊</span>物理變化 vs 化學變化</div>
+    <div style="overflow-x:auto;">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>比較項目</th>
+            <th>🧊 物理變化</th>
+            <th>🔥 化學變化</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>定義</strong></td><td>形態或狀態改變</td><td>產生新物質</td></tr>
+          <tr><td><strong>可逆性</strong></td><td>通常可逆</td><td>通常不可逆</td></tr>
+          <tr><td><strong>產生新物質</strong></td><td>❌ 不會</td><td>✅ 會</td></tr>
+          <tr><td><strong>溫度範例</strong></td><td>冰融化、水沸騰</td><td>木材燃燒、鐵生鏽</td></tr>
+          <tr><td><strong>特徵</strong></td><td>形狀/大小/狀態改變</td><td>發光、發熱、產生氣泡、變色</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">🃏</span>點擊卡片看詳細說明</div>
+    <div class="grid-3">
+      <div class="phenom-card physical" onclick="openModal('melt')">
+        <span class="phenom-tag">物理變化</span>
+        <span class="emoji">🧊</span>
+        <h3>冰塊融化</h3>
+        <p>加熱後固態冰變成液態水</p>
+      </div>
+      <div class="phenom-card physical" onclick="openModal('boiling')">
+        <span class="phenom-tag">物理變化</span>
+        <span class="emoji">♨️</span>
+        <h3>水的沸騰</h3>
+        <p>加熱至100°C液態水變氣態</p>
+      </div>
+      <div class="phenom-card physical" onclick="openModal('expand')">
+        <span class="phenom-tag">物理變化</span>
+        <span class="emoji">🔩</span>
+        <h3>熱脹冷縮</h3>
+        <p>溫度升高物體體積增大</p>
+      </div>
+      <div class="phenom-card chemical" onclick="openModal('burn')">
+        <span class="phenom-tag">化學變化</span>
+        <span class="emoji">🔥</span>
+        <h3>燃燒</h3>
+        <p>物質與氧氣反應產生新物質</p>
+      </div>
+      <div class="phenom-card chemical" onclick="openModal('rust')">
+        <span class="phenom-tag">化學變化</span>
+        <span class="emoji">🪝</span>
+        <h3>金屬生鏽</h3>
+        <p>鐵與水氣和氧氣反應變成鐵鏽</p>
+      </div>
+      <div class="phenom-card chemical" onclick="openModal('cook')">
+        <span class="phenom-tag">化學變化</span>
+        <span class="emoji">🍳</span>
+        <h3>加熱食物</h3>
+        <p>雞蛋受熱後蛋白質永久變性</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">🌡️</span>物質三態與溫度關係</div>
+    <div class="process-flow">
+      <div class="flow-step">
+        <span class="step-emoji">🧊</span>
+        <div class="step-label">固態</div>
+        <div class="step-temp">低溫</div>
+      </div>
+      <div class="flow-arrow">
+        <span>→</span>
+        <div>加熱（熔化）</div>
+        <div style="color:#e63946">0°C</div>
+      </div>
+      <div class="flow-step">
+        <span class="step-emoji">💧</span>
+        <div class="step-label">液態</div>
+        <div class="step-temp">常溫</div>
+      </div>
+      <div class="flow-arrow">
+        <span>→</span>
+        <div>加熱（沸騰）</div>
+        <div style="color:#e63946">100°C</div>
+      </div>
+      <div class="flow-step">
+        <span class="step-emoji">💨</span>
+        <div class="step-label">氣態</div>
+        <div class="step-temp">高溫</div>
+      </div>
+    </div>
+    <div class="process-flow" style="margin-top:0;">
+      <div class="flow-step">
+        <span class="step-emoji">💨</span>
+        <div class="step-label">氣態</div>
+      </div>
+      <div class="flow-arrow">
+        <span>→</span>
+        <div>冷卻（液化）</div>
+        <div style="color:#0077b6">100°C</div>
+      </div>
+      <div class="flow-step">
+        <span class="step-emoji">💧</span>
+        <div class="step-label">液態</div>
+      </div>
+      <div class="flow-arrow">
+        <span>→</span>
+        <div>冷卻（凝固）</div>
+        <div style="color:#0077b6">0°C</div>
+      </div>
+      <div class="flow-step">
+        <span class="step-emoji">🧊</span>
+        <div class="step-label">固態</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">🌏</span>生活中的溫度變化例子</div>
+    <div class="example-strip">
+      <div class="ex-card">
+        <span class="ex-emoji">☃️</span>
+        <h4>雪人融化</h4>
+        <p>太陽加熱，固態雪→液態水</p>
+      </div>
+      <div class="ex-card">
+        <span class="ex-emoji">🍦</span>
+        <h4>冰淇淋融化</h4>
+        <p>手的溫度→固態→液態</p>
+      </div>
+      <div class="ex-card">
+        <span class="ex-emoji">🫗</span>
+        <h4>水燒開</h4>
+        <p>100°C時水沸騰冒泡</p>
+      </div>
+      <div class="ex-card">
+        <span class="ex-emoji">🕯️</span>
+        <h4>蠟燭燃燒</h4>
+        <p>先熔化（物理）再燃燒（化學）</p>
+      </div>
+      <div class="ex-card">
+        <span class="ex-emoji">🌁</span>
+        <h4>霧的形成</h4>
+        <p>水蒸氣遇冷液化成小水珠</p>
+      </div>
+      <div class="ex-card">
+        <span class="ex-emoji">🏠</span>
+        <h4>窗戶起霧</h4>
+        <p>暖濕空氣遇冷玻璃液化</p>
+      </div>
+      <div class="ex-card">
+        <span class="ex-emoji">🌧️</span>
+        <h4>下雨</h4>
+        <p>水蒸氣上升遇冷→水滴</p>
+      </div>
+      <div class="ex-card">
+        <span class="ex-emoji">❄️</span>
+        <h4>下雪</h4>
+        <p>水蒸氣在0°C以下凝華</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     TAB 2：溫度對水的影響
+══════════════════════════════════════════ -->
+<section id="tab-water" class="section">
+
+  <div class="water-demo fade-in">
+    <div class="card-title" style="font-size:1.4rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:1.8rem;">🌡️</span>溫度調節器：觀察水的三態變化
+    </div>
+    <div class="slider-wrap">
+      <input type="range" class="temp-slider" id="tempSlider" min="-20" max="120" value="25" oninput="updateWaterState(this.value)">
+      <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:#555;margin-top:4px;">
+        <span>❄️ -20°C</span><span>0°C</span><span>20°C</span><span>60°C</span><span>🔥 100°C+</span>
+      </div>
+    </div>
+    <div class="temp-display" id="tempDisplay">25°C</div>
+
+    <div class="water-visual">
+      <div id="waterContainer" class="state-container">
+        <div class="state-label" id="stateLabel">液態</div>
+        <div class="water-fill" id="waterFill" style="height:60%">
+          <div class="molecules" id="molecules"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-info" id="stateInfo">
+      <div class="state-name" id="stateName" style="color:#0077b6">💧 液態水</div>
+      <div id="stateDesc">溫度在 <strong>0°C～100°C</strong> 之間，水呈現液態。<br>分子活躍，可以流動，沒有固定形狀。</div>
+    </div>
+  </div>
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">🌡️</span>水的重要溫度點</div>
+    <div class="thermo-wrap">
+      <div class="thermo-svg-wrap">
+        <svg width="80" height="260" viewBox="0 0 80 260">
+          <!-- tube -->
+          <rect x="32" y="20" width="16" height="190" rx="8" fill="#f5f5f5" stroke="#90e0ef" stroke-width="2"/>
+          <!-- bulb -->
+          <circle cx="40" cy="228" r="20" fill="#e63946" stroke="#c62828" stroke-width="2"/>
+          <!-- fill -->
+          <rect id="thermoFill" x="36" y="100" width="8" height="110" rx="4" fill="#e63946"/>
+          <!-- marks -->
+          <line x1="48" y1="30" x2="58" y2="30" stroke="#555" stroke-width="1.5"/>
+          <text x="62" y="34" font-size="10" fill="#e63946">120°C</text>
+          <line x1="48" y1="70" x2="58" y2="70" stroke="#555" stroke-width="1.5"/>
+          <text x="62" y="74" font-size="10" fill="#f77f00">100°C 沸點</text>
+          <line x1="48" y1="130" x2="55" y2="130" stroke="#555" stroke-width="1"/>
+          <text x="59" y="134" font-size="9" fill="#48cae4">20°C</text>
+          <line x1="48" y1="180" x2="58" y2="180" stroke="#555" stroke-width="1.5"/>
+          <text x="62" y="184" font-size="10" fill="#0077b6">0°C 冰點</text>
+          <line x1="48" y1="210" x2="55" y2="210" stroke="#555" stroke-width="1"/>
+          <text x="59" y="214" font-size="9" fill="#555">-20°C</text>
+        </svg>
+      </div>
+      <div class="thermo-facts">
+        <div class="fact-item ice">
+          <span class="fact-icon">🧊</span>
+          <div><strong>0°C 以下：固態（冰）</strong><br>水凝固成冰，分子排列整齊，不能流動</div>
+        </div>
+        <div class="fact-item water">
+          <span class="fact-icon">💧</span>
+          <div><strong>0°C ～ 100°C：液態（水）</strong><br>水呈液態，可流動，有固定體積但無固定形狀</div>
+        </div>
+        <div class="fact-item steam">
+          <span class="fact-icon">💨</span>
+          <div><strong>接近 100°C：開始蒸發</strong><br>水面的水分子逐漸轉為水蒸氣散入空氣</div>
+        </div>
+        <div class="fact-item boil">
+          <span class="fact-icon">♨️</span>
+          <div><strong>100°C：沸點（劇烈汽化）</strong><br>全部液態水快速轉為水蒸氣，產生大量氣泡</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">🔬</span>分子視角：溫度影響分子運動</div>
+    <div class="heat-anim-wrap">
+      <div class="heat-source">
+        <div class="flame-emoji">🔥</div>
+        <div style="font-size:0.8rem;color:#e63946;font-weight:600;margin-top:4px;">熱源</div>
+      </div>
+      <div class="heat-arrows">
+        <div class="arrow-particle"></div>
+        <div class="arrow-particle"></div>
+        <div class="arrow-particle"></div>
+        <div class="arrow-particle"></div>
+      </div>
+      <div class="heated-obj" id="heatedObj">💧</div>
+      <div style="margin-left:12px;">
+        <div style="font-size:0.9rem;line-height:1.8;max-width:220px;">
+          <p style="color:#e63946;font-weight:700;margin-bottom:8px;">溫度越高…</p>
+          <p>✅ 分子運動速度越快</p>
+          <p>✅ 分子間距離越大</p>
+          <p>✅ 物質體積膨脹</p>
+          <p>✅ 可能改變物質狀態</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">☁️</span>水的循環與溫度</div>
+    <div style="background:linear-gradient(135deg,#e0f7fa,#b3e5fc);border-radius:16px;padding:20px;">
+      <div class="process-flow" style="gap:6px;">
+        <div class="flow-step" style="background:#fff3;">
+          <span class="step-emoji">🌊</span>
+          <div class="step-label">海洋/湖泊</div>
+        </div>
+        <div class="flow-arrow"><span>↑</span><div>蒸發</div><div style="color:#f77f00">加熱</div></div>
+        <div class="flow-step" style="background:#fff3;">
+          <span class="step-emoji">☁️</span>
+          <div class="step-label">雲</div>
+        </div>
+        <div class="flow-arrow"><span>↓</span><div>降水</div><div style="color:#0077b6">冷卻</div></div>
+        <div class="flow-step" style="background:#fff3;">
+          <span class="step-emoji">🌧️</span>
+          <div class="step-label">降雨/降雪</div>
+        </div>
+        <div class="flow-arrow"><span>→</span><div>流回</div></div>
+        <div class="flow-step" style="background:#fff3;">
+          <span class="step-emoji">🌊</span>
+          <div class="step-label">海洋/湖泊</div>
+        </div>
+      </div>
+      <p style="text-align:center;font-size:0.9rem;margin-top:14px;color:#0077b6;">
+        💡 水的循環完全依賴<strong>溫度變化</strong>來驅動！太陽加熱→蒸發；高空冷卻→凝結降水
+      </p>
+    </div>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════
+     TAB 3：溫度對物質的影響
+══════════════════════════════════════════ -->
+<section id="tab-materials" class="section">
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">🔩</span>熱脹冷縮互動示範</div>
+    <div class="expand-demo">
+      <div class="expand-controls">
+        <button class="expand-btn heat" onclick="expandMetal(1)">🔥 加熱</button>
+        <button class="expand-btn cool" onclick="expandMetal(-1)">❄️ 冷卻</button>
+        <button class="expand-btn" style="background:#eee;color:#333;border:2px solid #ccc;" onclick="expandMetal(0)">🔄 重置</button>
+      </div>
+      <div class="expand-temp-display" id="expandTempDisplay" style="background:linear-gradient(135deg,#e0f7fa,#caf0f8);color:#0077b6;">
+        溫度：20°C
+      </div>
+      <div class="metal-rod-wrap" style="margin-top:10px;">
+        <div style="font-size:0.85rem;color:#555;margin-bottom:16px;text-align:center;">金屬棒長度（示意）</div>
+        <div class="metal-rod" id="metalRod" style="width:220px;">
+          <span>金屬棒</span>
+          <div class="rod-label" id="rodLabel">標準長度（20°C）</div>
+        </div>
+      </div>
+      <div style="max-width:400px;text-align:center;font-size:0.9rem;line-height:1.7;color:#444;">
+        大多數固體、液體和氣體在加熱時<strong style="color:#e63946">體積膨脹</strong>，
+        冷卻時<strong style="color:#0077b6">體積收縮</strong>，這就是<strong>熱脹冷縮</strong>原理。
+      </div>
+    </div>
+  </div>
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">🧪</span>不同物質的熔點與沸點</div>
+    <p style="font-size:0.9rem;color:#555;margin-bottom:16px;">點擊卡片查看詳細資訊</p>
+    <div class="material-grid">
+      <div class="mat-card ice-card" onclick="openModal('matice')">
+        <span class="mat-emoji">🧊</span>
+        <h3>水（冰）</h3>
+        <p class="mp">熔點：0°C</p>
+        <p class="mp">沸點：100°C</p>
+        <div class="bar-wrap"><div class="bar-fill" style="width:10%;background:#0077b6;"></div></div>
+      </div>
+      <div class="mat-card wax-card" onclick="openModal('matwax')">
+        <span class="mat-emoji">🕯️</span>
+        <h3>蠟</h3>
+        <p class="mp">熔點：約 50-60°C</p>
+        <p class="mp">容易熔化</p>
+        <div class="bar-wrap"><div class="bar-fill" style="width:30%;background:#f9a825;"></div></div>
+      </div>
+      <div class="mat-card rubber-card" onclick="openModal('matrubber')">
+        <span class="mat-emoji">🪀</span>
+        <h3>橡膠</h3>
+        <p class="mp">低溫變硬脆</p>
+        <p class="mp">高溫軟化</p>
+        <div class="bar-wrap"><div class="bar-fill" style="width:45%;background:#9c27b0;"></div></div>
+      </div>
+      <div class="mat-card metal-card" onclick="openModal('matalum')">
+        <span class="mat-emoji">🪙</span>
+        <h3>鋁</h3>
+        <p class="mp">熔點：660°C</p>
+        <p class="mp">沸點：2470°C</p>
+        <div class="bar-wrap"><div class="bar-fill" style="width:66%;background:#9e9e9e;"></div></div>
+      </div>
+      <div class="mat-card iron-card" onclick="openModal('matiron')">
+        <span class="mat-emoji">⚙️</span>
+        <h3>鐵</h3>
+        <p class="mp">熔點：1538°C</p>
+        <p class="mp">沸點：2862°C</p>
+        <div class="bar-wrap"><div class="bar-fill" style="width:80%;background:#795548;"></div></div>
+      </div>
+      <div class="mat-card glass-card" onclick="openModal('matglass')">
+        <span class="mat-emoji">🔬</span>
+        <h3>玻璃</h3>
+        <p class="mp">軟化：約 700°C</p>
+        <p class="mp">可塑形吹製</p>
+        <div class="bar-wrap"><div class="bar-fill" style="width:72%;background:#5c6bc0;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">🌉</span>熱脹冷縮在生活中的應用</div>
+    <div class="grid-2">
+      <div style="background:linear-gradient(135deg,#fff8e1,#ffe8d6);border-radius:14px;padding:18px;border-left:4px solid #f77f00;">
+        <h3 style="color:#e65100;margin-bottom:10px;">🛤️ 鐵路鋼軌的縫隙</h3>
+        <p style="font-size:0.9rem;line-height:1.7;color:#555;">鋼軌之間刻意留有縫隙，避免夏天高溫時鋼軌膨脹彼此擠壓而彎曲變形。</p>
+      </div>
+      <div style="background:linear-gradient(135deg,#e0f7fa,#b3e5fc);border-radius:14px;padding:18px;border-left:4px solid #0288d1;">
+        <h3 style="color:#01579b;margin-bottom:10px;">🌡️ 溫度計原理</h3>
+        <p style="font-size:0.9rem;line-height:1.7;color:#555;">酒精或汞受熱膨脹在細管中上升，冷卻時收縮下降，藉此顯示溫度變化。</p>
+      </div>
+      <div style="background:linear-gradient(135deg,#f3e5f5,#e1bee7);border-radius:14px;padding:18px;border-left:4px solid #9c27b0;">
+        <h3 style="color:#6a1b9a;margin-bottom:10px;">🏗️ 橋梁伸縮縫</h3>
+        <p style="font-size:0.9rem;line-height:1.7;color:#555;">大型橋梁設計有伸縮縫，讓橋樑材料在夏冬溫差中自由伸縮，防止龜裂。</p>
+      </div>
+      <div style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border-radius:14px;padding:18px;border-left:4px solid #388e3c;">
+        <h3 style="color:#1b5e20;margin-bottom:10px;">🍾 瓶蓋難開的秘訣</h3>
+        <p style="font-size:0.9rem;line-height:1.7;color:#555;">用熱水浸泡瓶蓋，金屬蓋膨脹鬆動後更容易打開，這就是熱脹冷縮的應用。</p>
+      </div>
+      <div style="background:linear-gradient(135deg,#fce4ec,#f8bbd0);border-radius:14px;padding:18px;border-left:4px solid #e91e63;">
+        <h3 style="color:#880e4f;margin-bottom:10px;">🚗 輪胎氣壓變化</h3>
+        <p style="font-size:0.9rem;line-height:1.7;color:#555;">夏天氣溫高，輪胎中的空氣膨脹，氣壓升高；冬天氣溫低，氣壓降低。</p>
+      </div>
+      <div style="background:linear-gradient(135deg,#fff9c4,#fff176);border-radius:14px;padding:18px;border-left:4px solid #f9a825;">
+        <h3 style="color:#e65100;margin-bottom:10px;">💡 電線夏長冬短</h3>
+        <p style="font-size:0.9rem;line-height:1.7;color:#555;">夏天電線受熱膨脹變長下垂；冬天收縮變短繃緊，所以要預留適當鬆弛度。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">⚗️</span>溫度對化學反應的影響</div>
+    <div style="background:linear-gradient(135deg,#fff8e1,#ffe8d6);border-radius:16px;padding:20px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;">
+        <div style="text-align:center;padding:16px;background:rgba(255,255,255,0.7);border-radius:12px;">
+          <div style="font-size:2.2rem;margin-bottom:8px;">⚡</div>
+          <h4 style="color:#e65100;margin-bottom:6px;">加速反應</h4>
+          <p style="font-size:0.85rem;color:#555;line-height:1.6;">溫度越高，分子運動越快，碰撞次數增多，化學反應速率加快</p>
+        </div>
+        <div style="text-align:center;padding:16px;background:rgba(255,255,255,0.7);border-radius:12px;">
+          <div style="font-size:2.2rem;margin-bottom:8px;">🍖</div>
+          <h4 style="color:#e65100;margin-bottom:6px;">食物烹飪</h4>
+          <p style="font-size:0.85rem;color:#555;line-height:1.6;">高溫使食物中的蛋白質、澱粉等物質發生化學變化，產生新的味道與質地</p>
+        </div>
+        <div style="text-align:center;padding:16px;background:rgba(255,255,255,0.7);border-radius:12px;">
+          <div style="font-size:2.2rem;margin-bottom:8px;">🧬</div>
+          <h4 style="color:#e65100;margin-bottom:6px;">蛋白質變性</h4>
+          <p style="font-size:0.85rem;color:#555;line-height:1.6;">雞蛋加熱後蛋白質結構改變，由透明變白色，此過程不可逆</p>
+        </div>
+        <div style="text-align:center;padding:16px;background:rgba(255,255,255,0.7);border-radius:12px;">
+          <div style="font-size:2.2rem;margin-bottom:8px;">🪨</div>
+          <h4 style="color:#e65100;margin-bottom:6px;">礦物形成</h4>
+          <p style="font-size:0.85rem;color:#555;line-height:1.6;">地球深處高溫使岩石熔化，冷卻後形成不同的礦石與岩石</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════
+     TAB 4：小測驗
+══════════════════════════════════════════ -->
+<section id="tab-quiz" class="section">
+  <div class="card fade-in">
+    <div class="card-title"><span class="icon">📝</span>溫度與物質變化小測驗</div>
+    <p style="font-size:0.9rem;color:#555;margin-bottom:20px;">共 6 題，點擊答案即可作答！</p>
+
+    <div class="quiz-progress">
+      <div class="quiz-progress-bar" id="quizProgressBar" style="width:0%"></div>
+    </div>
+
+    <!-- Q1 -->
+    <div class="quiz-card" id="q1">
+      <div class="quiz-q">Q1. 水在幾度時會沸騰？</div>
+      <div class="quiz-options">
+        <button class="quiz-opt" onclick="answer(this,'q1',false)">50°C</button>
+        <button class="quiz-opt" onclick="answer(this,'q1',true)">100°C</button>
+        <button class="quiz-opt" onclick="answer(this,'q1',false)">0°C</button>
+        <button class="quiz-opt" onclick="answer(this,'q1',false)">200°C</button>
+      </div>
+      <div class="quiz-feedback" id="q1-feedback"></div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="quiz-card" id="q2">
+      <div class="quiz-q">Q2. 冰塊融化屬於哪種變化？</div>
+      <div class="quiz-options">
+        <button class="quiz-opt" onclick="answer(this,'q2',true)">物理變化</button>
+        <button class="quiz-opt" onclick="answer(this,'q2',false)">化學變化</button>
+        <button class="quiz-opt" onclick="answer(this,'q2',false)">生物變化</button>
+        <button class="quiz-opt" onclick="answer(this,'q2',false)">核反應</button>
+      </div>
+      <div class="quiz-feedback" id="q2-feedback"></div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="quiz-card" id="q3">
+      <div class="quiz-q">Q3. 下列哪個例子是「化學變化」？</div>
+      <div class="quiz-options">
+        <button class="quiz-opt" onclick="answer(this,'q3',false)">❄️ 水結冰</button>
+        <button class="quiz-opt" onclick="answer(this,'q3',false)">💧 冰融化</button>
+        <button class="quiz-opt" onclick="answer(this,'q3',true)">🔥 木頭燃燒</button>
+        <button class="quiz-opt" onclick="answer(this,'q3',false)">💨 水蒸發</button>
+      </div>
+      <div class="quiz-feedback" id="q3-feedback"></div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="quiz-card" id="q4">
+      <div class="quiz-q">Q4. 熱脹冷縮的意思是？</div>
+      <div class="quiz-options">
+        <button class="quiz-opt" onclick="answer(this,'q4',false)">加熱質量增加，冷卻質量減少</button>
+        <button class="quiz-opt" onclick="answer(this,'q4',true)">加熱體積膨脹，冷卻體積縮小</button>
+        <button class="quiz-opt" onclick="answer(this,'q4',false)">加熱顏色變深，冷卻顏色變淺</button>
+        <button class="quiz-opt" onclick="answer(this,'q4',false)">加熱變輕，冷卻變重</button>
+      </div>
+      <div class="quiz-feedback" id="q4-feedback"></div>
+    </div>
+
+    <!-- Q5 -->
+    <div class="quiz-card" id="q5">
+      <div class="quiz-q">Q5. 水蒸氣遇冷變成小水珠，這個過程叫做？</div>
+      <div class="quiz-options">
+        <button class="quiz-opt" onclick="answer(this,'q5',false)">蒸發</button>
+        <button class="quiz-opt" onclick="answer(this,'q5',false)">沸騰</button>
+        <button class="quiz-opt" onclick="answer(this,'q5',true)">液化（凝結）</button>
+        <button class="quiz-opt" onclick="answer(this,'q5',false)">凝固</button>
+      </div>
+      <div class="quiz-feedback" id="q5-feedback"></div>
+    </div>
+
+    <!-- Q6 -->
+    <div class="quiz-card" id="q6">
+      <div class="quiz-q">Q6. 鐵路鋼軌之間留有縫隙，主要是為了預防什麼？</div>
+      <div class="quiz-options">
+        <button class="quiz-opt" onclick="answer(this,'q6',false)">讓火車行駛更快</button>
+        <button class="quiz-opt" onclick="answer(this,'q6',false)">減少材料用量</button>
+        <button class="quiz-opt" onclick="answer(this,'q6',true)">夏天高溫時鋼軌膨脹後不會彎曲</button>
+        <button class="quiz-opt" onclick="answer(this,'q6',false)">讓雨水可以排出</button>
+      </div>
+      <div class="quiz-feedback" id="q6-feedback"></div>
+    </div>
+
+    <div class="quiz-score" id="quizScore" style="display:none;"></div>
+    <button class="quiz-reset" id="quizReset" style="display:none;" onclick="resetQuiz()">🔄 重新測驗</button>
+  </div>
+
+  <div class="summary-box fade-in">
+    <h2>📚 重點總整理</h2>
+    <div class="summary-points">
+      <div class="summary-point">
+        <strong>🧊 物質三態</strong>
+        固態、液態、氣態之間的轉變由溫度決定
+      </div>
+      <div class="summary-point">
+        <strong>💧 水的特殊點</strong>
+        0°C 結冰，100°C 沸騰（標準大氣壓下）
+      </div>
+      <div class="summary-point">
+        <strong>🔩 熱脹冷縮</strong>
+        溫度升高→體積膨脹；溫度降低→體積縮小
+      </div>
+      <div class="summary-point">
+        <strong>🔬 兩種變化</strong>
+        物理變化：可逆，不產生新物質；化學變化：不可逆，產生新物質
+      </div>
+      <div class="summary-point">
+        <strong>⚡ 反應速率</strong>
+        溫度越高，化學反應速率越快（分子碰撞更頻繁）
+      </div>
+      <div class="summary-point">
+        <strong>🌏 生活應用</strong>
+        溫度計、橋梁縫隙、輪胎氣壓、鐵路鋼軌縫隙
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ MODAL ══ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    <div class="modal-emoji" id="modalEmoji"></div>
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<footer>
+  🌡️ 溫度與物質變化 互動視覺學習儀表板 | 國小自然科學習資源
+</footer>
+
+<script>
+// ── TAB SWITCHING ──
+function switchTab(tab) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.currentTarget.classList.add('active');
+  initFadeIn();
+}
+
+// ── FADE IN ON SCROLL ──
+function initFadeIn() {
+  const els = document.querySelectorAll('.fade-in');
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  els.forEach(el => { el.classList.remove('visible'); obs.observe(el); });
+}
+document.addEventListener('DOMContentLoaded', initFadeIn);
+
+// ── WATER STATE SLIDER ──
+function updateWaterState(temp) {
+  temp = parseInt(temp);
+  const display = document.getElementById('tempDisplay');
+  const stateLabel = document.getElementById('stateLabel');
+  const stateName = document.getElementById('stateName');
+  const stateDesc = document.getElementById('stateDesc');
+  const fill = document.getElementById('waterFill');
+  const container = document.getElementById('waterContainer');
+  const mols = document.getElementById('molecules');
+
+  display.textContent = temp + '°C';
+
+  if (temp <= 0) {
+    // ICE
+    display.style.color = '#0077b6';
+    stateLabel.textContent = '固態（冰）';
+    stateName.textContent = '🧊 固態（冰）';
+    stateName.style.color = '#0077b6';
+    stateDesc.innerHTML = '溫度在 <strong>0°C 以下</strong>，水凝固成冰。<br>分子排列整齊，緊密相連，無法自由移動。';
+    fill.style.height = '85%';
+    fill.style.background = 'linear-gradient(to top, #90e0ef, #caf0f8)';
+    container.style.borderColor = '#0077b6';
+    mols.style.display = 'flex';
+    renderMolecules('ice');
+  } else if (temp < 100) {
+    // WATER
+    const pct = 30 + (temp / 100) * 40;
+    display.style.color = '#48cae4';
+    stateLabel.textContent = '液態（水）';
+    stateName.textContent = '💧 液態（水）';
+    stateName.style.color = '#48cae4';
+    stateDesc.innerHTML = '溫度在 <strong>0°C～100°C</strong> 之間，水呈液態。<br>分子活躍可流動，有固定體積但無固定形狀。';
+    fill.style.height = pct + '%';
+    fill.style.background = 'linear-gradient(to top, #0077b6, #48cae4)';
+    container.style.borderColor = '#48cae4';
+    mols.style.display = 'flex';
+    renderMolecules('water');
+  } else {
+    // STEAM
+    display.style.color = '#e63946';
+    stateLabel.textContent = '氣態（水蒸氣）';
+    stateName.textContent = '💨 氣態（水蒸氣）';
+    stateName.style.color = '#e63946';
+    stateDesc.innerHTML = '溫度達到 <strong>100°C 以上</strong>，水沸騰變成水蒸氣。<br>分子快速運動，向四面八方擴散，無固定形狀與體積。';
+    fill.style.height = '15%';
+    fill.style.background = 'linear-gradient(to top, rgba(255,200,100,0.3), rgba(255,150,50,0.1))';
+    container.style.borderColor = '#e63946';
+    mols.style.display = 'flex';
+    renderMolecules('steam');
+  }
+}
+
+function renderMolecules(state) {
+  const mols = document.getElementById('molecules');
+  mols.innerHTML = '';
+  const configs = {
+    ice: { n: 16, anim: '', gap: '2px', color: '#90e0ef', border: '#0077b6' },
+    water: { n: 12, anim: 'waterMol 1.5s ease-in-out infinite alternate', gap: '4px', color: '#48cae4', border: '#0077b6' },
+    steam: { n: 6, anim: 'steamMol 0.6s ease-in-out infinite alternate', gap: '10px', color: '#ffd180', border: '#f77f00' }
+  };
+  const cfg = configs[state];
+  for (let i = 0; i < cfg.n; i++) {
+    const d = document.createElement('div');
+    d.className = 'mol';
+    d.style.background = `radial-gradient(circle, #fff, ${cfg.color})`;
+    d.style.borderColor = cfg.border;
+    d.style.animationDelay = (i * 0.1) + 's';
+    if (cfg.anim) d.style.animation = cfg.anim;
+    mols.appendChild(d);
+  }
+}
+
+// ── METAL EXPAND ──
+let metalTemp = 20;
+const style = document.createElement('style');
+style.textContent = `
+@keyframes waterMol {
+  from {transform:translate(0,0);}
+  to {transform:translate(3px,-3px);}
+}
+@keyframes steamMol {
+  from {transform:translate(-5px,-5px) scale(0.9);}
+  to {transform:translate(5px,5px) scale(1.1);}
+}`;
+document.head.appendChild(style);
+
+function expandMetal(dir) {
+  if (dir === 0) { metalTemp = 20; }
+  else { metalTemp = Math.max(-20, Math.min(200, metalTemp + dir * 30)); }
+
+  const rod = document.getElementById('metalRod');
+  const label = document.getElementById('rodLabel');
+  const tempDisp = document.getElementById('expandTempDisplay');
+
+  const base = 220;
+  const change = (metalTemp - 20) * 0.8;
+  const newWidth = Math.max(100, base + change);
+  rod.style.width = newWidth + 'px';
+
+  if (metalTemp > 20) {
+    rod.style.background = `linear-gradient(to bottom, #ffcc80, #ff7043, #ffcc80)`;
+    label.textContent = `膨脹中 (+${(newWidth - base).toFixed(0)}px 示意)`;
+    tempDisp.style.background = 'linear-gradient(135deg,#ffe8d6,#ffcc80)';
+    tempDisp.style.color = '#e65100';
+  } else if (metalTemp < 20) {
+    rod.style.background = `linear-gradient(to bottom, #b3e5fc, #0288d1, #b3e5fc)`;
+    label.textContent = `收縮中 (${(newWidth - base).toFixed(0)}px 示意)`;
+    tempDisp.style.background = 'linear-gradient(135deg,#e0f7fa,#b3e5fc)';
+    tempDisp.style.color = '#01579b';
+  } else {
+    rod.style.background = `linear-gradient(to bottom, #e0e0e0, #9e9e9e, #e0e0e0)`;
+    label.textContent = '標準長度（20°C）';
+    tempDisp.style.background = 'linear-gradient(135deg,#f5f5f5,#e0e0e0)';
+    tempDisp.style.color = '#333';
+  }
+  tempDisp.textContent = `溫度：${metalTemp}°C`;
+}
+
+// ── QUIZ ──
+let quizAnswered = {};
+let quizCorrect = 0;
+const TOTAL = 6;
+const quizData = {
+  q1: { correct: '正確答案是 100°C 🎉 這是水在標準大氣壓下的沸點！', wrong: '答錯了！水在標準大氣壓下 100°C 時沸騰。' },
+  q2: { correct: '答對了！🧊 冰塊融化只是固態→液態的狀態改變，屬於物理變化，可以再冷凍還原。', wrong: '答錯了！冰塊融化是物理變化，物質本身（水的化學式 H₂O）沒有改變。' },
+  q3: { correct: '正確！🔥 木頭燃燒產生二氧化碳和水，生成新物質，屬於化學變化，而且不可逆。', wrong: '答錯了！木頭燃燒才是化學變化。水的三態變化（冰、水、蒸氣）都是物理變化。' },
+  q4: { correct: '答對了！🔩 溫度升高時物體體積增大（熱脹），溫度降低時體積縮小（冷縮）。', wrong: '答錯了！熱脹冷縮指的是體積的變化：加熱膨脹，冷卻收縮。質量不會改變。' },
+  q5: { correct: '正確！☁️ 液化（凝結）是氣態→液態的過程，水蒸氣遇冷後變成小水珠就是液化。', wrong: '答錯了！氣態→液態的過程叫做液化（凝結）。蒸發是液態→氣態；凝固是液態→固態。' },
+  q6: { correct: '答對了！🛤️ 鋼軌縫隙是為了讓鋼軌夏天受熱膨脹時有空間伸展，避免彼此擠壓彎曲。', wrong: '答錯了！縫隙是為了預留熱脹空間，夏天高溫時鋼軌膨脹不會因擠壓而彎曲變形。' }
+};
+
+function answer(btn, qid, isCorrect) {
+  if (quizAnswered[qid]) return;
+  quizAnswered[qid] = true;
+
+  const allOpts = btn.parentElement.querySelectorAll('.quiz-opt');
+  allOpts.forEach(b => b.disabled = true);
+
+  const fb = document.getElementById(qid + '-feedback');
+  fb.classList.add('show');
+
+  if (isCorrect) {
+    btn.classList.add('correct');
+    fb.classList.add('correct');
+    fb.textContent = '✅ ' + quizData[qid].correct;
+    quizCorrect++;
+  } else {
+    btn.classList.add('wrong');
+    fb.classList.add('wrong');
+    fb.textContent = '❌ ' + quizData[qid].wrong;
+    // highlight correct
+    allOpts.forEach(b => { if (b.textContent.includes('100°C') || b.getAttribute('onclick')?.includes('true')) {
+      // just style the correct one differently if visible
+    }});
+  }
+
+  const answered = Object.keys(quizAnswered).length;
+  document.getElementById('quizProgressBar').style.width = (answered / TOTAL * 100) + '%';
+
+  if (answered === TOTAL) {
+    setTimeout(() => {
+      const score = document.getElementById('quizScore');
+      const stars = quizCorrect >= 5 ? '🌟🌟🌟' : quizCorrect >= 3 ? '⭐⭐' : '⭐';
+      score.innerHTML = `${stars} 你答對了 <strong>${quizCorrect} / ${TOTAL}</strong> 題！${getScoreMsg(quizCorrect)}`;
+      score.style.display = 'block';
+      document.getElementById('quizReset').style.display = 'block';
+    }, 400);
+  }
+}
+
+function getScoreMsg(n) {
+  if (n === 6) return ' 🎉 滿分！太厲害了！';
+  if (n >= 4) return ' 👏 很棒，繼續加油！';
+  if (n >= 2) return ' 💪 還需要再複習一下！';
+  return ' 📚 再看看課本，你可以的！';
+}
+
+function resetQuiz() {
+  quizAnswered = {};
+  quizCorrect = 0;
+  document.querySelectorAll('.quiz-opt').forEach(b => {
+    b.disabled = false;
+    b.classList.remove('correct', 'wrong');
+  });
+  document.querySelectorAll('.quiz-feedback').forEach(fb => {
+    fb.classList.remove('show', 'correct', 'wrong');
+    fb.textContent = '';
+  });
+  document.getElementById('quizScore').style.display = 'none';
+  document.getElementById('quizReset').style.display = 'none';
+  document.getElementById('quizProgressBar').style.width = '0%';
+}
+
+// ── MODAL DATA ──
+const modalData = {
+  melt: {
+    emoji: '🧊',
+    title: '冰塊融化（物理變化）',
+    body: `<p>冰塊融化是典型的<strong>物理變化</strong>，屬於固態→液態的狀態轉變。</p>
+    <ul>
+      <li>發生溫度：0°C 以上開始融化</li>
+      <li>化學成分不變：仍是水（H₂O）</li>
+      <li>可逆：再次冷凍可以重新結冰</li>
+      <li>現象：固體逐漸變小，出現水滴</li>
+    </ul>
+    <p style="margin-top:10px;color:#0077b6">🌍 例子：北極冰川融化、冰箱中的冰塊融化</p>`
+  },
+  boiling: {
+    emoji: '♨️',
+    title: '水的沸騰（物理變化）',
+    body: `<p>水在 <strong>100°C</strong>（標準大氣壓）時達到沸點，發生劇烈汽化。</p>
+    <ul>
+      <li>狀態：液態→氣態（水蒸氣）</li>
+      <li>特徵：大量氣泡從液體內部產生</li>
+      <li>可逆：水蒸氣冷卻後重新液化為水</li>
+      <li>與蒸發不同：沸騰是全體液體汽化</li>
+    </ul>
+    <p style="margin-top:10px;color:#f77f00">🌍 例子：燒開水、電鍋煮飯</p>`
+  },
+  expand: {
+    emoji: '🔩',
+    title: '熱脹冷縮（物理變化）',
+    body: `<p>大多數物質在溫度升高時體積膨脹，溫度降低時體積縮小。</p>
+    <ul>
+      <li>原因：溫度升高，分子運動加快，分子間距增大</li>
+      <li>固體：膨脹量較小，但力量大</li>
+      <li>液體：比固體膨脹量大</li>
+      <li>氣體：膨脹量最大</li>
+    </ul>
+    <p style="margin-top:10px;color:#f77f00">🌍 例子：鐵路縫隙、橋梁伸縮縫、溫度計、輪胎氣壓</p>`
+  },
+  burn: {
+    emoji: '🔥',
+    title: '燃燒（化學變化）',
+    body: `<p>燃燒是物質與氧氣發生的<strong>氧化反應</strong>，屬於化學變化。</p>
+    <ul>
+      <li>產生新物質：如二氧化碳、水、灰燼</li>
+      <li>現象：發光、發熱、產生煙霧</li>
+      <li>不可逆：燒完的灰燼無法還原為木材</li>
+      <li>需要：可燃物、氧氣、達到燃點溫度</li>
+    </ul>
+    <p style="margin-top:10px;color:#e63946">⚠️ 危險！燃燒會造成火災，注意安全！</p>`
+  },
+  rust: {
+    emoji: '🪝',
+    title: '金屬生鏽（化學變化）',
+    body: `<p>鐵生鏽是鐵（Fe）與空氣中的水氣和氧氣緩慢反應的化學變化。</p>
+    <ul>
+      <li>產生新物質：氧化鐵（鐵鏽，Fe₂O₃）</li>
+      <li>現象：表面出現紅棕色鏽斑</li>
+      <li>不可逆：鐵鏽無法自動變回鐵</li>
+      <li>溫度影響：溫度越高，生鏽越快</li>
+    </ul>
+    <p style="margin-top:10px;color:#795548">🌍 預防方法：塗漆、電鍍、保持乾燥</p>`
+  },
+  cook: {
+    emoji: '🍳',
+    title: '加熱食物（化學變化）',
+    body: `<p>煮熟食物時，高溫使食物中的<strong>蛋白質、澱粉</strong>等發生化學變化。</p>
+    <ul>
+      <li>雞蛋：蛋白質受熱變性，由透明→白色</li>
+      <li>麵包：澱粉糊化，產生新的味道與香氣</li>
+      <li>肉類：蛋白質結構改變，口感改變</li>
+      <li>不可逆：煮熟的蛋無法變回生蛋</li>
+    </ul>
+    <p style="margin-top:10px;color:#e65100">🌍 這就是為什麼食物熟了不能"倒帶"變回生的！</p>`
+  },
+  matice: {
+    emoji: '💧',
+    title: '水的熔點與沸點',
+    body: `<p>水是地球上最重要的物質之一，有獨特的溫度特性。</p>
+    <ul>
+      <li>❄️ 凝固點（冰點）：<strong>0°C</strong></li>
+      <li>💧 熔點：<strong>0°C</strong>（冰→水）</li>
+      <li>♨️ 沸點：<strong>100°C</strong>（水→水蒸氣）</li>
+      <li>海拔越高，沸點越低（山頂約96°C）</li>
+    </ul>
+    <p style="margin-top:10px;color:#0077b6">💡 水的這些特性讓地球上的生命成為可能！</p>`
+  },
+  matwax: {
+    emoji: '🕯️',
+    title: '蠟的熔點',
+    body: `<p>蠟是一種低熔點的有機物，常見於蠟燭中。</p>
+    <ul>
+      <li>熔點：約 <strong>50～60°C</strong></li>
+      <li>火焰讓固態蠟熔化→蠟芯吸液態蠟燃燒</li>
+      <li>熔化是物理變化（可凝固還原）</li>
+      <li>燃燒是化學變化（產生CO₂和水）</li>
+    </ul>
+    <p style="margin-top:10px;color:#f9a825">🕯️ 蠟燭同時展示了物理和化學兩種變化！</p>`
+  },
+  matrubber: {
+    emoji: '🪀',
+    title: '橡膠對溫度的反應',
+    body: `<p>橡膠是一種高分子材料，對溫度非常敏感。</p>
+    <ul>
+      <li>低溫：橡膠變硬、脆，容易裂開</li>
+      <li>常溫：彈性好，質地柔軟</li>
+      <li>高溫：軟化變黏，失去彈性</li>
+      <li>極高溫：分解燃燒</li>
+    </ul>
+    <p style="margin-top:10px;color:#9c27b0">🌍 例子：冬天輪胎更容易爆胎，需要充氮氣或更換冬季胎</p>`
+  },
+  matalum: {
+    emoji: '🪙',
+    title: '鋁的熔點',
+    body: `<p>鋁是生活中常見的金屬，廣泛用於製造工業產品。</p>
+    <ul>
+      <li>熔點：<strong>660°C</strong></li>
+      <li>沸點：<strong>2470°C</strong></li>
+      <li>密度小、質輕、導熱性好</li>
+      <li>常用於飛機、汽車、包裝材料</li>
+    </ul>
+    <p style="margin-top:10px;color:#757575">🌍 鋁罐製造就需要將鋁熔化再成型，是工業上的重要應用</p>`
+  },
+  matiron: {
+    emoji: '⚙️',
+    title: '鐵的熔點',
+    body: `<p>鐵是人類使用最廣泛的金屬之一，具有很高的熔點。</p>
+    <ul>
+      <li>熔點：<strong>1538°C</strong></li>
+      <li>沸點：<strong>2862°C</strong></li>
+      <li>煉鋼需要極高溫熔化鐵礦石</li>
+      <li>鑄造：熔化的鐵水倒入模具冷卻成型</li>
+    </ul>
+    <p style="margin-top:10px;color:#795548">🌍 鐵路、橋梁、機械設備都使用高熔點的鋼鐵製造</p>`
+  },
+  matglass: {
+    emoji: '🔬',
+    title: '玻璃的軟化溫度',
+    body: `<p>玻璃是一種非晶態固體，沒有固定的熔點，但有軟化溫度範圍。</p>
+    <ul>
+      <li>軟化溫度：約 <strong>700～800°C</strong></li>
+      <li>熔融狀態：可以吹製成各種形狀</li>
+      <li>冷卻後：重新變硬，保持吹製的形狀</li>
+      <li>注意：快速冷卻（熱衝擊）容易破裂</li>
+    </ul>
+    <p style="margin-top:10px;color:#5c6bc0">🌍 玻璃工藝師利用玻璃在高溫下的可塑性創作精美藝術品</p>`
+  }
+};
+
+function openModal(key) {
+  const data = modalData[key];
+  if (!data) return;
+  document.getElementById('modalEmoji').textContent = data.emoji;
+  document.getElementById('modalTitle').textContent = data.title;
+  document.getElementById('modalBody').innerHTML = data.body;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModalDirect();
+});
+
+// Init
+updateWaterState(25);
+initFadeIn();
+</script>
+</body>
+</html>
